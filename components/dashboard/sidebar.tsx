@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   BarChart,
@@ -12,6 +12,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { createClient } from "@/lib/supabase";
 
 const routes = [
   {
@@ -47,6 +48,13 @@ interface SidebarProps {
 
 export function Sidebar({ onNavigate }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const supabase = createClient();
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push('/login');
+  };
 
   return (
     <div className="h-full flex flex-col bg-background border-r">
@@ -76,7 +84,11 @@ export function Sidebar({ onNavigate }: SidebarProps) {
       </div>
       
       <div className="p-4 border-t">
-        <Button variant="ghost" className="w-full justify-start gap-2">
+        <Button 
+          variant="ghost" 
+          className="w-full justify-start gap-2"
+          onClick={handleLogout}
+        >
           <LogOut className="h-4 w-4" />
           Logout
         </Button>

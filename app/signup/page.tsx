@@ -2,19 +2,47 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AuthCard } from "@/components/auth/auth-card";
+import { toast } from "sonner";
 
 export default function SignUpPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const router = useRouter();
+  const supabase = createClient();
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    // Authentication will be implemented later
-    setTimeout(() => setIsLoading(false), 1000);
+
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data.user) {
+        toast.success("Account created successfully! Please check your email to verify your account.");
+        router.push("/login");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Error creating account");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -38,6 +66,8 @@ export default function SignUpPage() {
               placeholder="name@example.com"
               required
               className="border-0 bg-muted"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
             />
           </div>
           <div className="space-y-2">
@@ -48,6 +78,9 @@ export default function SignUpPage() {
               placeholder="••••••••"
               required
               className="border-0 bg-muted"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              minLength={6}
             />
           </div>
           <Button

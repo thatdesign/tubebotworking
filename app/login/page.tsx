@@ -2,19 +2,45 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AuthCard } from "@/components/auth/auth-card";
+import { toast } from "sonner";
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const router = useRouter();
+  const supabase = createClient();
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    // Authentication will be implemented later
-    setTimeout(() => setIsLoading(false), 1000);
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data.user) {
+        toast.success("Successfully signed in!");
+        router.push("/dashboard");
+        router.refresh();
+      }
+    } catch (error) {
+      toast.error("Invalid login credentials");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -38,6 +64,8 @@ export default function LoginPage() {
               placeholder="name@example.com"
               required
               className="border-0 bg-muted"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
             />
           </div>
           <div className="space-y-2">
@@ -48,6 +76,8 @@ export default function LoginPage() {
               placeholder="••••••••"
               required
               className="border-0 bg-muted"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
             />
           </div>
           <Button
