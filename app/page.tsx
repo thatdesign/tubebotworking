@@ -107,7 +107,7 @@ export default function Home() {
           <div className="hidden md:flex items-center space-x-4">
             <NavLinks />
             <Button asChild>
-              <Link href="/signup">Get Started</Link>
+              <Link href="/signup">Get started</Link>
             </Button>
           </div>
 
