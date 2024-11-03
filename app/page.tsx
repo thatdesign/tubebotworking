@@ -142,7 +142,7 @@ export default function Home() {
             transition={{ duration: 0.5 }}
           >
             <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-6">
-              Manage YouTube Comments
+              Manage Youtube Comments
               <span className="text-gradient"> with AI</span>
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
