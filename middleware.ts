@@ -10,14 +10,16 @@ export async function middleware(req: NextRequest) {
     data: { session },
   } = await supabase.auth.getSession()
 
-  // If user is not signed in and the current path is not /login or /signup
-  // redirect the user to /login
-  if (!session && !['/login', '/signup'].includes(req.nextUrl.pathname)) {
+  // Define public routes that don't require authentication
+  const publicRoutes = ['/', '/login', '/signup']
+  const isPublicRoute = publicRoutes.includes(req.nextUrl.pathname)
+
+  // If user is not signed in and trying to access a protected route
+  if (!session && !isPublicRoute) {
     return NextResponse.redirect(new URL('/login', req.url))
   }
 
-  // If user is signed in and the current path is /login or /signup
-  // redirect the user to /dashboard
+  // If user is signed in and trying to access login/signup pages
   if (session && ['/login', '/signup'].includes(req.nextUrl.pathname)) {
     return NextResponse.redirect(new URL('/dashboard', req.url))
   }
@@ -26,5 +28,15 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico|public).*)',
+  ],
 }
