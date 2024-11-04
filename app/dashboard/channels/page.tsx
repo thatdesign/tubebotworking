@@ -2,71 +2,83 @@
 
 export const dynamic = 'force-dynamic'
 
-import { Card } from "@/components/ui/card";
+import { useEffect, useState } from "react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Youtube, Plus } from "lucide-react";
-
-const channels = [
-  {
-    id: 1,
-    name: "Tech Tutorials",
-    subscribers: "125K",
-    videos: 245,
-    totalComments: "12.5K",
-  },
-  {
-    id: 2,
-    name: "Coding with AI",
-    subscribers: "89K",
-    videos: 178,
-    totalComments: "8.2K",
-  },
-];
+import { YouTubeAuth } from "@/components/dashboard/youtube-auth";
+import { ChannelCard } from "@/components/dashboard/channel-card";
+import { createClient } from "@/lib/supabase";
+import { useToast } from "@/hooks/use-toast";
 
 export default function ChannelsPage() {
+  const [channels, setChannels] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const supabase = createClient();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    fetchChannels();
+  }, []);
+
+  const fetchChannels = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: channels, error } = await supabase
+          .from("youtube_channels")
+          .select("*")
+          .eq("user_id", user.id);
+
+        if (error) throw error;
+        setChannels(channels || []);
+      }
+    } catch (error) {
+      console.error("Error fetching channels:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load channels. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleManageChannel = (channelId: string) => {
+    // TODO: Implement channel management functionality
+    console.log("Managing channel:", channelId);
+  };
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Connected Channels</h1>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Channel
-        </Button>
+        <YouTubeAuth />
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {channels.map((channel) => (
-          <Card key={channel.id} className="p-6">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
-                <Youtube className="h-6 w-6 text-red-500" />
-              </div>
-              <div>
-                <h3 className="font-semibold">{channel.name}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {channel.subscribers} subscribers
-                </p>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-muted-foreground">Videos</p>
-                <p className="font-semibold">{channel.videos}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Comments</p>
-                <p className="font-semibold">{channel.totalComments}</p>
-              </div>
-            </div>
-            
-            <div className="mt-4 flex gap-2">
-              <Button className="w-full" variant="outline">View Details</Button>
-              <Button className="w-full">Manage</Button>
-            </div>
-          </Card>
-        ))}
-      </div>
+      {channels.length === 0 ? (
+        <div className="text-center py-12">
+          <h3 className="text-lg font-semibold mb-2">No channels connected</h3>
+          <p className="text-muted-foreground mb-4">
+            Connect your YouTube channel to start managing comments
+          </p>
+          <YouTubeAuth />
+        </div>
+      ) : (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {channels.map((channel) => (
+            <ChannelCard
+              key={channel.channel_id}
+              channel={channel}
+              onManage={handleManageChannel}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
