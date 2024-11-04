@@ -20,7 +20,7 @@ export async function GET(request: Request) {
           code,
           client_id: process.env.GOOGLE_CLIENT_ID!,
           client_secret: process.env.GOOGLE_CLIENT_SECRET!,
-          redirect_uri: process.env.GOOGLE_REDIRECT_URI!,
+          redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/auth/youtube/callback`,
           grant_type: "authorization_code",
         }),
       });
