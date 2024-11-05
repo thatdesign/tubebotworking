@@ -49,6 +49,36 @@ export default function ChannelsPage() {
     console.log("Managing channel:", channelId);
   };
 
+  const handleDisconnectChannel = async (channelId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+
+      const { error } = await supabase
+        .from("youtube_channels")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("channel_id", channelId);
+
+      if (error) throw error;
+
+      // Update local state to remove the disconnected channel
+      setChannels(channels.filter(channel => channel.channel_data.id !== channelId));
+
+      toast({
+        title: "Success",
+        description: "Channel disconnected successfully",
+      });
+    } catch (error) {
+      console.error("Error disconnecting channel:", error);
+      toast({
+        title: "Error",
+        description: "Failed to disconnect channel. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (loading) {
     return <div>Loading...</div>;
   }
@@ -75,6 +105,7 @@ export default function ChannelsPage() {
               key={channel.channel_id}
               channel={channel}
               onManage={handleManageChannel}
+              onDisconnect={handleDisconnectChannel}
             />
           ))}
         </div>

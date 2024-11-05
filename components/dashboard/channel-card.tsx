@@ -25,9 +25,10 @@ interface ChannelCardProps {
     };
   };
   onManage: (channelId: string) => void;
+  onDisconnect: (channelId: string) => void;
 }
 
-export function ChannelCard({ channel, onManage }: ChannelCardProps) {
+export function ChannelCard({ channel, onManage, onDisconnect }: ChannelCardProps) {
   const thumbnailUrl = channel.channel_data.snippet.thumbnails.default?.url || 
                       channel.channel_data.snippet.thumbnails.medium?.url || 
                       channel.channel_data.snippet.thumbnails.high?.url;
@@ -70,19 +71,28 @@ export function ChannelCard({ channel, onManage }: ChannelCardProps) {
         </div>
       </div>
       
-      <div className="mt-4 flex gap-2">
-        <Button 
-          className="w-full" 
-          variant="outline"
-          onClick={() => window.open(`https://youtube.com/channel/${channel.channel_data.id}`, '_blank')}
-        >
-          View Channel
-        </Button>
+      <div className="mt-4 flex flex-col gap-2">
+        <div className="flex gap-2">
+          <Button 
+            className="w-full" 
+            variant="outline"
+            onClick={() => window.open(`https://youtube.com/channel/${channel.channel_data.id}`, '_blank')}
+          >
+            View Channel
+          </Button>
+          <Button 
+            className="w-full"
+            onClick={() => onManage(channel.channel_data.id)}
+          >
+            Manage
+          </Button>
+        </div>
         <Button 
           className="w-full"
-          onClick={() => onManage(channel.channel_data.id)}
+          variant="destructive"
+          onClick={() => onDisconnect(channel.channel_data.id)}
         >
-          Manage
+          Disconnect Channel
         </Button>
       </div>
     </Card>
