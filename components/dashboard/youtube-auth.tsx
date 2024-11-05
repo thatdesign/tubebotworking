@@ -5,7 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Youtube } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 
-export function YouTubeAuth() {
+interface YouTubeAuthProps {
+  variant?: 'default' | 'header';
+}
+
+export function YouTubeAuth({ variant = 'default' }: YouTubeAuthProps) {
   const [isLoading, setIsLoading] = useState(false);
   const supabase = createClient();
 
@@ -33,6 +37,20 @@ export function YouTubeAuth() {
       setIsLoading(false);
     }
   };
+
+  if (variant === 'header') {
+    return (
+      <Button
+        onClick={handleConnect}
+        disabled={isLoading}
+        size="sm"
+        className="bg-red-600 hover:bg-red-700 text-white"
+      >
+        <Youtube className="mr-2 h-4 w-4" />
+        {isLoading ? "Connecting..." : "Connect Another Channel"}
+      </Button>
+    );
+  }
 
   return (
     <Button
