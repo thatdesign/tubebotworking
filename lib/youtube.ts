@@ -15,6 +15,17 @@ interface YouTubeComment {
   }
 }
 
+interface YouTubeVideo {
+  id: {
+    kind: string;
+    videoId: string;
+  };
+  snippet: {
+    title: string;
+    publishedAt: string;
+  }
+}
+
 export async function fetchAndStoreComments() {
   const supabase = createClient();
   
@@ -32,9 +43,9 @@ export async function fetchAndStoreComments() {
 
   for (const channel of channels) {
     try {
-      // Fetch comments from YouTube API
-      const response = await fetch(
-        `https://youtube.googleapis.com/youtube/v3/commentThreads?part=snippet&allThreadsRelatedToChannelId=${channel.channel_id}&maxResults=100&key=${process.env.NEXT_PUBLIC_YOUTUBE_API_KEY}`,
+      // First fetch recent videos from the channel
+      const videosResponse = await fetch(
+        `https://youtube.googleapis.com/youtube/v3/search?part=snippet&channelId=${channel.channel_id}&maxResults=50&order=date&type=video&key=${process.env.NEXT_PUBLIC_YOUTUBE_API_KEY}`,
         {
           headers: {
             'Authorization': `Bearer ${channel.access_token}`,
@@ -43,58 +54,58 @@ export async function fetchAndStoreComments() {
         }
       );
 
-      if (!response.ok) {
-        throw new Error(`YouTube API error: ${response.statusText}`);
+      if (!videosResponse.ok) {
+        throw new Error(`YouTube API error: ${videosResponse.statusText}`);
       }
 
-      const data = await response.json();
-      const comments: YouTubeComment[] = data.items;
-
-      // Get video details for the comments
-      const videoIds = Array.from(new Set(comments.map(comment => comment.snippet.videoId)));
-      const videoDetailsResponse = await fetch(
-        `https://youtube.googleapis.com/youtube/v3/videos?part=snippet&id=${videoIds.join(',')}&key=${process.env.NEXT_PUBLIC_YOUTUBE_API_KEY}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${channel.access_token}`,
-            'Accept': 'application/json',
+      const videosData = await videosResponse.json();
+      const videos: YouTubeVideo[] = videosData.items;
+      
+      // For each video, fetch its comments
+      for (const video of videos) {
+        const commentsResponse = await fetch(
+          `https://youtube.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId=${video.id.videoId}&maxResults=100&key=${process.env.NEXT_PUBLIC_YOUTUBE_API_KEY}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${channel.access_token}`,
+              'Accept': 'application/json',
+            }
           }
+        );
+
+        if (!commentsResponse.ok) {
+          console.error(`Error fetching comments for video ${video.id.videoId}: ${commentsResponse.statusText}`);
+          continue;
         }
-      );
 
-      if (!videoDetailsResponse.ok) {
-        throw new Error(`YouTube API error: ${videoDetailsResponse.statusText}`);
-      }
+        const commentsData = await commentsResponse.json();
+        const comments: YouTubeComment[] = commentsData.items || [];
 
-      const videoData = await videoDetailsResponse.json();
-      const videoTitles = Object.fromEntries(
-        videoData.items.map((video: any) => [video.id, video.snippet.title])
-      );
+        // Store comments in Supabase
+        for (const comment of comments) {
+          const { error } = await supabase
+            .from('youtube_comments')
+            .upsert({
+              channel_id: channel.channel_id,
+              video_id: video.id.videoId,
+              comment_id: comment.id,
+              author_name: comment.snippet.topLevelComment.snippet.authorDisplayName,
+              author_profile_image_url: comment.snippet.topLevelComment.snippet.authorProfileImageUrl,
+              text: comment.snippet.topLevelComment.snippet.textDisplay,
+              video_title: video.snippet.title,
+              published_at: comment.snippet.topLevelComment.snippet.publishedAt,
+              updated_at: new Date().toISOString(),
+            }, {
+              onConflict: 'comment_id'
+            });
 
-      // Store comments in Supabase
-      for (const comment of comments) {
-        const { error } = await supabase
-          .from('youtube_comments')
-          .upsert({
-            channel_id: channel.channel_id,
-            video_id: comment.snippet.videoId,
-            comment_id: comment.id,
-            author_name: comment.snippet.topLevelComment.snippet.authorDisplayName,
-            author_profile_image_url: comment.snippet.topLevelComment.snippet.authorProfileImageUrl,
-            text: comment.snippet.topLevelComment.snippet.textDisplay,
-            video_title: videoTitles[comment.snippet.videoId],
-            published_at: comment.snippet.topLevelComment.snippet.publishedAt,
-            updated_at: new Date().toISOString(),
-          }, {
-            onConflict: 'comment_id'
-          });
-
-        if (error) {
-          console.error('Error storing comment:', error);
+          if (error) {
+            console.error('Error storing comment:', error);
+          }
         }
       }
     } catch (error) {
-      console.error(`Error fetching comments for channel ${channel.channel_id}:`, error);
+      console.error(`Error processing channel ${channel.channel_id}:`, error);
     }
   }
 }
