@@ -74,7 +74,8 @@ export async function fetchAndStoreComments() {
         );
 
         if (!commentsResponse.ok) {
-          console.error(`Error fetching comments for video ${video.id.videoId}: ${commentsResponse.statusText}`);
+          // Use console.warn for non-critical errors that shouldn't stop processing
+          console.warn(`Error fetching comments for video ${video.id.videoId}: ${commentsResponse.statusText}`);
           continue;
         }
 
@@ -83,7 +84,7 @@ export async function fetchAndStoreComments() {
 
         // Store comments in Supabase
         for (const comment of comments) {
-          const { error } = await supabase
+          const { error: upsertError } = await supabase
             .from('youtube_comments')
             .upsert({
               channel_id: channel.channel_id,
@@ -99,13 +100,14 @@ export async function fetchAndStoreComments() {
               onConflict: 'comment_id'
             });
 
-          if (error) {
-            console.error('Error storing comment:', error);
+          if (upsertError) {
+            console.warn('Error storing comment:', upsertError);
           }
         }
       }
-    } catch (error) {
-      console.error(`Error processing channel ${channel.channel_id}:`, error);
+    } catch (err: unknown) {
+      const error = err as Error;
+      console.warn(`Error processing channel ${channel.channel_id}:`, error.message);
     }
   }
 }
@@ -120,7 +122,7 @@ export async function getRecentComments() {
     .limit(10);
 
   if (error) {
-    console.error('Error fetching comments:', error);
+    console.warn('Error fetching comments:', error);
     return [];
   }
 
