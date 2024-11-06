@@ -113,7 +113,7 @@ export async function GET(request: Request) {
     });
 
     if (upsertError) {
-      console.error("Database error:", upsertError);
+      console.error("Database error:", upsertError.message, upsertError.details, upsertError.hint);
       return NextResponse.redirect(
         new URL("/dashboard/channels?error=database_error", request.url)
       );
