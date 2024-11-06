@@ -70,21 +70,14 @@ export async function GET(request: Request) {
       }
     );
 
-    if (!channelResponse.ok) {
-      const errorData = await channelResponse.json();
-      console.error("Channel info error:", errorData);
-      return NextResponse.redirect(
-        new URL("/dashboard/channels?error=channel_info_failed", request.url)
-      );
-    }
-
     const channelData = await channelResponse.json();
+    console.log("Channel response status:", channelResponse.status);
     console.log("Channel data received:", channelData);
 
-    if (!channelData.items?.length) {
-      console.error("No channel found");
+    if (!channelResponse.ok || !channelData.items?.length) {
+      console.error("No channel found or API error:", channelData.error || "No items");
       return NextResponse.redirect(
-        new URL("/dashboard/channels?error=no_channel_found", request.url)
+        new URL("/dashboard/channels?error=channel_info_failed", request.url)
       );
     }
 
