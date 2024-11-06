@@ -57,6 +57,26 @@ ALTER TABLE youtube_channels
   ADD CONSTRAINT youtube_channels_user_id_channel_id_key 
   UNIQUE (user_id, channel_id);
 
+-- Improved trigger function with fixed search path
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql
+   SECURITY DEFINER
+   SET search_path = pg_catalog, public;
+
+-- Drop existing trigger if it exists
+DROP TRIGGER IF EXISTS update_youtube_channels_updated_at ON youtube_channels;
+
+-- Recreate trigger with the improved function
+CREATE TRIGGER update_youtube_channels_updated_at
+BEFORE UPDATE ON youtube_channels
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
 -- Verbose logging of table structure
 DO $$
 DECLARE
