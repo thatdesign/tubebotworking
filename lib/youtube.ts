@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase';
+import { createClient } from './supabase';
 
 interface YouTubeComment {
   id: string;
@@ -13,6 +13,22 @@ interface YouTubeComment {
     }
     videoId: string;
   }
+}
+
+interface YouTubeVideo {
+  id: {
+    videoId: string;
+  };
+  snippet: {
+    title: string;
+    description: string;
+    publishedAt: string;
+    thumbnails: {
+      default: {
+        url: string;
+      };
+    };
+  };
 }
 
 export async function fetchAndStoreComments() {
@@ -140,13 +156,13 @@ export async function getRecentComments() {
     }
 
     console.log(`Found ${channels.length} channels for comment fetching`);
-    console.log('Channel IDs:', channels.map(c => c.channel_id));
+    console.log('Channel IDs:', channels.map((c: { channel_id: string }) => c.channel_id));
 
     // Get comments for all channels the user has access to
     const { data: comments, error: commentsError } = await supabase
       .from('youtube_comments')
       .select('*')
-      .in('channel_id', channels.map(c => c.channel_id))
+      .in('channel_id', channels.map((c: { channel_id: string }) => c.channel_id))
       .order('published_at', { ascending: false });
 
     if (commentsError) {
