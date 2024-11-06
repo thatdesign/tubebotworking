@@ -114,6 +114,16 @@ export async function GET(request: Request) {
 
     if (upsertError) {
       console.error("Database error:", upsertError.message, upsertError.details, upsertError.hint);
+      console.error("Upsert data:", {
+        user_id: user.id,
+        channel_id: channel.id,
+        channel_title: channel.snippet.title,
+        access_token,
+        refresh_token,
+        subscriber_count: channel.statistics.subscriberCount,
+        video_count: channel.statistics.videoCount,
+        channel_data: channel,
+      });
       return NextResponse.redirect(
         new URL("/dashboard/channels?error=database_error", request.url)
       );
