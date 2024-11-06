@@ -1,70 +1,60 @@
-# YouTube Channel Connection Troubleshooting
+# Database Migration and Index Management
 
-## Database Migration Issues
+## Handling Existing Indexes and Constraints
 
-### Resolving Missing Columns
+### Common Index-Related Migration Challenges
+- Duplicate index creation
+- Constraint conflicts
+- Performance optimization
 
-If you encounter column-related errors during migration:
+#### Index Management Strategies
 
-1. **Apply Migration Manually**
-   ```bash
-   supabase migration up
+1. **Safe Index Creation**
+   ```sql
+   -- Create index only if it doesn't exist
+   CREATE INDEX IF NOT EXISTS index_name 
+   ON table_name(column_name);
    ```
 
-2. **Verify Table Schema**
-   Run in Supabase SQL Editor:
+2. **Checking Existing Indexes**
    ```sql
-   SELECT column_name, data_type, is_nullable 
-   FROM information_schema.columns 
-   WHERE table_name = 'youtube_channels'
-   ORDER BY ordinal_position;
+   -- List all indexes for a table
+   SELECT indexname, indexdef 
+   FROM pg_indexes 
+   WHERE tablename = 'your_table_name';
    ```
 
-### Common Migration Problems
+3. **Handling Duplicate Indexes**
+   - Use `IF NOT EXISTS` clause
+   - Drop existing indexes before recreation
+   - Verify index uniqueness and performance
 
-- Missing columns
-- Incorrect column types
-- Constraint violations
+### Troubleshooting Index Creation
 
-### Troubleshooting Steps
-
-1. **Check Migration File**
-   - Verify all required columns are present
-   - Ensure correct data types
-   - Add `IF NOT EXISTS` clauses
-
-2. **Manual Column Addition**
+1. **Identify Existing Indexes**
    ```sql
-   -- Example of adding a missing column
-   ALTER TABLE youtube_channels 
-   ADD COLUMN IF NOT EXISTS subscriber_count TEXT;
-   ```
-
-3. **Verify Column Constraints**
-   ```sql
-   -- Check column nullability and constraints
    SELECT 
-     column_name, 
-     is_nullable, 
-     data_type 
-   FROM information_schema.columns 
-   WHERE table_name = 'youtube_channels';
+     schemaname, 
+     tablename, 
+     indexname 
+   FROM pg_indexes 
+   WHERE tablename IN ('youtube_channels', 'youtube_comments');
    ```
+
+2. **Safe Migration Practices**
+   - Check for existing constraints
+   - Use transactional migrations
+   - Verify index compatibility
 
 ### Recommended Actions
-
-- Review migration files
-- Verify Supabase project configuration
-- Check environment variables
-- Restart development server
+- Review existing database indexes
+- Plan migrations carefully
+- Test in staging environment
+- Monitor database performance
 
 ## Support
 
-If migration issues persist:
-1. Provide full error message
-2. Share table schema output
-3. Verify migration history
-
-### Contact Support
-- Check project documentation
-- File a GitHub issue with detailed information
+If index-related migration issues persist:
+1. Provide full index list
+2. Share migration logs
+3. Describe specific constraint conflicts

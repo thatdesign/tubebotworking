@@ -1,53 +1,94 @@
-create table if not exists youtube_channels (
-  id uuid default uuid_generate_v4() primary key,
-  user_id uuid references auth.users(id) on delete cascade not null,
-  channel_id text not null,
-  channel_title text not null,
-  access_token text not null,
-  refresh_token text not null,
-  subscriber_count text not null,
-  video_count integer not null,
-  channel_data jsonb not null,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  updated_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  unique(user_id, channel_id)
-);
+-- Careful management of YouTube channels table schema and dependencies
+BEGIN;
 
--- Add RLS policies
-alter table youtube_channels enable row level security;
+-- Safely handle existing constraints and indexes
+DO $$
+BEGIN
+  -- Drop existing foreign key constraint if it exists
+  IF EXISTS (
+    SELECT 1 
+    FROM information_schema.table_constraints 
+    WHERE table_name = 'youtube_comments' 
+    AND constraint_type = 'FOREIGN KEY' 
+    AND constraint_name = 'youtube_comments_channel_id_fkey'
+  ) THEN
+    ALTER TABLE youtube_comments 
+    DROP CONSTRAINT IF EXISTS youtube_comments_channel_id_fkey;
+  END IF;
 
-drop policy if exists "Users can view their own channels" on youtube_channels;
-create policy "Users can view their own channels"
-  on youtube_channels for select
-  using (auth.uid() = user_id);
+  -- Drop existing index if it exists
+  IF EXISTS (
+    SELECT 1 
+    FROM pg_class 
+    WHERE relname = 'youtube_comments_channel_id_idx'
+  ) THEN
+    DROP INDEX IF EXISTS youtube_comments_channel_id_idx;
+  END IF;
+END $$;
 
-drop policy if exists "Users can insert their own channels" on youtube_channels;
-create policy "Users can insert their own channels"
-  on youtube_channels for insert
-  with check (auth.uid() = user_id);
+-- Alter the youtube_channels table to ensure column constraints
+ALTER TABLE youtube_channels 
+  ALTER COLUMN channel_id SET NOT NULL,
+  ALTER COLUMN channel_title SET NOT NULL,
+  ALTER COLUMN access_token SET NOT NULL,
+  ALTER COLUMN refresh_token SET NOT NULL,
+  ALTER COLUMN subscriber_count SET NOT NULL,
+  ALTER COLUMN subscriber_count SET DATA TYPE TEXT,
+  ALTER COLUMN video_count SET NOT NULL,
+  ALTER COLUMN video_count SET DATA TYPE INTEGER,
+  ALTER COLUMN channel_data SET NOT NULL,
+  ALTER COLUMN channel_data SET DATA TYPE JSONB;
 
-drop policy if exists "Users can update their own channels" on youtube_channels;
-create policy "Users can update their own channels"
-  on youtube_channels for update
-  using (auth.uid() = user_id);
+-- Recreate foreign key constraint with ON DELETE CASCADE
+ALTER TABLE youtube_comments 
+  ADD CONSTRAINT youtube_comments_channel_id_fkey 
+  FOREIGN KEY (channel_id) 
+  REFERENCES youtube_channels(channel_id) 
+  ON DELETE CASCADE;
 
-drop policy if exists "Users can delete their own channels" on youtube_channels;
-create policy "Users can delete their own channels"
-  on youtube_channels for delete
-  using (auth.uid() = user_id);
+-- Recreate index for channel_id in youtube_comments
+CREATE INDEX IF NOT EXISTS youtube_comments_channel_id_idx 
+ON youtube_comments(channel_id);
 
--- Add updated_at trigger
-create or replace function update_updated_at_column()
-returns trigger as $$
-begin
-  new.updated_at = now();
-  return new;
-end;
-$$ language plpgsql
-  set search_path = public;
+-- Ensure unique constraint on youtube_channels
+ALTER TABLE youtube_channels 
+  DROP CONSTRAINT IF EXISTS youtube_channels_user_id_channel_id_key,
+  ADD CONSTRAINT youtube_channels_user_id_channel_id_key 
+  UNIQUE (user_id, channel_id);
 
-drop trigger if exists update_youtube_channels_updated_at on youtube_channels;
-create trigger update_youtube_channels_updated_at
-  before update on youtube_channels
-  for each row
-  execute function update_updated_at_column();
+-- Trigger to automatically update the updated_at timestamp
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql
+   SECURITY DEFINER
+   SET search_path = pg_catalog, public;
+
+-- Drop and recreate trigger
+DROP TRIGGER IF EXISTS update_youtube_channels_updated_at ON youtube_channels;
+CREATE TRIGGER update_youtube_channels_updated_at
+BEFORE UPDATE ON youtube_channels
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
+-- Verbose logging of table structure
+DO $$
+DECLARE
+  col RECORD;
+BEGIN
+  RAISE NOTICE 'YouTube Channels Table Columns:';
+  FOR col IN 
+    SELECT column_name, data_type, is_nullable 
+    FROM information_schema.columns 
+    WHERE table_name = 'youtube_channels' 
+    ORDER BY ordinal_position
+  LOOP
+    RAISE NOTICE '% (%) - Nullable: %', 
+      col.column_name, col.data_type, col.is_nullable;
+  END LOOP;
+END $$;
+
+COMMIT;
