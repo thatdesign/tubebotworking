@@ -16,6 +16,7 @@ export async function GET(request: Request) {
   }
 
   if (!code) {
+    console.error("No code received in the callback");
     return NextResponse.redirect(
       new URL("/dashboard/channels?error=no_code", request.url)
     );
@@ -23,6 +24,7 @@ export async function GET(request: Request) {
 
   try {
     const supabase = createRouteHandlerClient({ cookies });
+    console.log("Initiating token exchange with code:", code);
     
     // Exchange the code for tokens
     const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
@@ -48,6 +50,7 @@ export async function GET(request: Request) {
     }
 
     const { access_token, refresh_token } = await tokenResponse.json();
+    console.log("Access token received:", access_token ? "Yes" : "No");
 
     if (!access_token) {
       console.error("No access token received");
@@ -57,6 +60,7 @@ export async function GET(request: Request) {
     }
 
     // Get user's YouTube channel info
+    console.log("Fetching YouTube channel info");
     const channelResponse = await fetch(
       "https://youtube.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true",
       {
@@ -75,7 +79,8 @@ export async function GET(request: Request) {
     }
 
     const channelData = await channelResponse.json();
-    
+    console.log("Channel data received:", channelData);
+
     if (!channelData.items?.length) {
       console.error("No channel found");
       return NextResponse.redirect(
@@ -89,11 +94,13 @@ export async function GET(request: Request) {
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {
+      console.error("User not authenticated");
       return NextResponse.redirect(
         new URL("/dashboard/channels?error=not_authenticated", request.url)
       );
     }
 
+    console.log("Upserting channel data for user:", user.id);
     const { error: upsertError } = await supabase.from("youtube_channels").upsert({
       user_id: user.id,
       channel_id: channel.id,
@@ -112,6 +119,7 @@ export async function GET(request: Request) {
       );
     }
 
+    console.log("Channel data upserted successfully");
     // Redirect back to the channels page with success
     return NextResponse.redirect(
       new URL("/dashboard/channels?success=true", request.url)
