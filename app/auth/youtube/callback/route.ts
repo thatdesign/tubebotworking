@@ -96,27 +96,17 @@ export async function GET(request: Request) {
     console.log("Upserting channel data for user:", user.id);
     const { error: upsertError } = await supabase.from("youtube_channels").upsert({
       user_id: user.id,
-      channel_id: channel.id,
-      channel_title: channel.snippet.title,
-      access_token,
-      refresh_token,
-      subscriber_count: channel.statistics.subscriberCount,
-      video_count: channel.statistics.videoCount,
-      channel_data: channel,
+      channel_id: "hardcoded_channel_id", // Hardcoded for testing
+      channel_title: "Hardcoded Channel Title", // Hardcoded for testing
+      access_token: "hardcoded_access_token", // Hardcoded for testing
+      refresh_token: "hardcoded_refresh_token", // Hardcoded for testing
+      subscriber_count: "1000", // Hardcoded for testing
+      video_count: 10, // Hardcoded for testing
+      channel_data: {}, // Hardcoded for testing
     });
 
     if (upsertError) {
       console.error("Database error:", upsertError.message, upsertError.details, upsertError.hint);
-      console.error("Upsert data:", {
-        user_id: user.id,
-        channel_id: channel.id,
-        channel_title: channel.snippet.title,
-        access_token,
-        refresh_token,
-        subscriber_count: channel.statistics.subscriberCount,
-        video_count: channel.statistics.videoCount,
-        channel_data: channel,
-      });
       return NextResponse.redirect(
         new URL("/dashboard/channels?error=database_error", request.url)
       );
