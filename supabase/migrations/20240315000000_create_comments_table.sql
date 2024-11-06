@@ -16,6 +16,7 @@ create table if not exists youtube_comments (
 -- Add RLS policies
 alter table youtube_comments enable row level security;
 
+drop policy if exists "Users can view comments for their channels" on youtube_comments;
 create policy "Users can view comments for their channels"
   on youtube_comments for select
   using (
@@ -26,6 +27,7 @@ create policy "Users can view comments for their channels"
     )
   );
 
+drop policy if exists "Users can insert comments for their channels" on youtube_comments;
 create policy "Users can insert comments for their channels"
   on youtube_comments for insert
   with check (
@@ -36,6 +38,7 @@ create policy "Users can insert comments for their channels"
     )
   );
 
+drop policy if exists "Users can update comments for their channels" on youtube_comments;
 create policy "Users can update comments for their channels"
   on youtube_comments for update
   using (
@@ -46,6 +49,7 @@ create policy "Users can update comments for their channels"
     )
   );
 
+drop policy if exists "Users can delete comments for their channels" on youtube_comments;
 create policy "Users can delete comments for their channels"
   on youtube_comments for delete
   using (
@@ -57,6 +61,7 @@ create policy "Users can delete comments for their channels"
   );
 
 -- Add updated_at trigger
+drop trigger if exists update_youtube_comments_updated_at on youtube_comments;
 create trigger update_youtube_comments_updated_at
   before update on youtube_comments
   for each row

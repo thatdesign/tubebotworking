@@ -16,18 +16,22 @@ create table if not exists youtube_channels (
 -- Add RLS policies
 alter table youtube_channels enable row level security;
 
+drop policy if exists "Users can view their own channels" on youtube_channels;
 create policy "Users can view their own channels"
   on youtube_channels for select
   using (auth.uid() = user_id);
 
+drop policy if exists "Users can insert their own channels" on youtube_channels;
 create policy "Users can insert their own channels"
   on youtube_channels for insert
   with check (auth.uid() = user_id);
 
+drop policy if exists "Users can update their own channels" on youtube_channels;
 create policy "Users can update their own channels"
   on youtube_channels for update
   using (auth.uid() = user_id);
 
+drop policy if exists "Users can delete their own channels" on youtube_channels;
 create policy "Users can delete their own channels"
   on youtube_channels for delete
   using (auth.uid() = user_id);
@@ -41,6 +45,7 @@ begin
 end;
 $$ language plpgsql;
 
+drop trigger if exists update_youtube_channels_updated_at on youtube_channels;
 create trigger update_youtube_channels_updated_at
   before update on youtube_channels
   for each row
