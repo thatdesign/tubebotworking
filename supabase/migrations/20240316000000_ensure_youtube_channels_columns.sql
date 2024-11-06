@@ -18,6 +18,13 @@ BEGIN
     RAISE NOTICE 'Column refresh_token already exists';
   END;
 
+  -- Check and add channel_title column
+  BEGIN
+    ALTER TABLE youtube_channels ADD COLUMN channel_title TEXT;
+  EXCEPTION WHEN duplicate_column THEN
+    RAISE NOTICE 'Column channel_title already exists';
+  END;
+
   -- Check and add subscriber_count column
   BEGIN
     ALTER TABLE youtube_channels ADD COLUMN subscriber_count TEXT;
@@ -44,6 +51,8 @@ END $$;
 ALTER TABLE youtube_channels 
   ALTER COLUMN access_token SET NOT NULL,
   ALTER COLUMN refresh_token SET NOT NULL,
+  ALTER COLUMN channel_title SET NOT NULL,
+  ALTER COLUMN channel_title SET DATA TYPE TEXT,
   ALTER COLUMN subscriber_count SET NOT NULL,
   ALTER COLUMN subscriber_count SET DATA TYPE TEXT,
   ALTER COLUMN video_count SET NOT NULL,
