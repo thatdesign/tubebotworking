@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Youtube } from "lucide-react";
 import { createClient } from "@/lib/supabase";
+import { useToast } from "@/hooks/use-toast";
 
 interface YouTubeAuthProps {
   variant?: 'default' | 'header';
@@ -12,15 +13,26 @@ interface YouTubeAuthProps {
 export function YouTubeAuth({ variant = 'default' }: YouTubeAuthProps) {
   const [isLoading, setIsLoading] = useState(false);
   const supabase = createClient();
+  const { toast } = useToast();
 
   const handleConnect = async () => {
     setIsLoading(true);
     try {
+      // Validate required environment variables
+      const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+      const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/auth/youtube/callback`;
+      const scopes = process.env.NEXT_PUBLIC_YOUTUBE_SCOPES || 
+        'https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/youtube.force-ssl';
+
+      if (!clientId || !redirectUri) {
+        throw new Error("Missing YouTube authentication configuration");
+      }
+
       const params = {
-        client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '',
-        redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/auth/youtube/callback`,
+        client_id: clientId,
+        redirect_uri: redirectUri,
         response_type: 'code',
-        scope: process.env.NEXT_PUBLIC_YOUTUBE_SCOPES || '',
+        scope: scopes,
         access_type: 'offline',
         prompt: 'consent'  // Force prompt to ensure we get a refresh token
       };
@@ -30,9 +42,18 @@ export function YouTubeAuth({ variant = 'default' }: YouTubeAuthProps) {
       
       // Store the current URL in localStorage to redirect back after auth
       localStorage.setItem("youtubeAuthRedirect", window.location.pathname);
+      
+      // Redirect to YouTube OAuth
       window.location.href = YOUTUBE_OAUTH_URL;
     } catch (error) {
       console.error("Error connecting to YouTube:", error);
+      
+      // Provide user-friendly error notification
+      toast({
+        title: "Connection Error",
+        description: error instanceof Error ? error.message : "Failed to initiate YouTube connection",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }
