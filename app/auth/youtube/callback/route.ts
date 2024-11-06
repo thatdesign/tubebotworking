@@ -70,7 +70,7 @@ export async function GET(request: Request) {
     const channelData = await channelResponse.json();
 
     if (!channelResponse.ok || !channelData.items?.length) {
-      console.error("No channel found or API error:", channelData.error || "No items");
+      console.error("No channel found or API error:", JSON.stringify(channelData));
       return NextResponse.redirect(
         new URL("/dashboard/channels?error=channel_info_failed", request.url)
       );
@@ -88,24 +88,37 @@ export async function GET(request: Request) {
       );
     }
 
-    // Upsert the actual channel data
-    const { error: upsertError } = await supabase.from("youtube_channels").upsert({
+    // Prepare channel data for insertion
+    const channelInsertData = {
       user_id: user.id,
       channel_id: channel.id,
       channel_title: channel.snippet.title,
       access_token: access_token,
       refresh_token: refresh_token,
-      subscriber_count: channel.statistics.subscriberCount,
-      video_count: channel.statistics.videoCount,
-      channel_data: channel,
-    }, {
-      onConflict: 'channel_id,user_id'
-    });
+      subscriber_count: channel.statistics.subscriberCount.toString(), // Ensure string type
+      video_count: parseInt(channel.statistics.videoCount, 10), // Ensure integer
+      channel_data: JSON.stringify(channel), // Ensure valid JSON
+    };
+
+    console.log("Attempting to insert channel data:", JSON.stringify(channelInsertData, null, 2));
+
+    // Upsert the actual channel data
+    const { error: upsertError } = await supabase.from("youtube_channels").upsert(
+      channelInsertData,
+      {
+        onConflict: 'channel_id,user_id'
+      }
+    );
 
     if (upsertError) {
-      console.error("Database error:", upsertError);
+      console.error("Detailed Database Error:", {
+        message: upsertError.message,
+        details: upsertError.details,
+        hint: upsertError.hint,
+        code: upsertError.code
+      });
       return NextResponse.redirect(
-        new URL("/dashboard/channels?error=database_error", request.url)
+        new URL(`/dashboard/channels?error=database_error&details=${encodeURIComponent(upsertError.message)}`, request.url)
       );
     }
 
@@ -114,7 +127,7 @@ export async function GET(request: Request) {
       new URL("/dashboard/channels?success=true", request.url)
     );
   } catch (error) {
-    console.error("Error in YouTube callback:", error);
+    console.error("Comprehensive Error in YouTube callback:", error);
     return NextResponse.redirect(
       new URL("/dashboard/channels?error=auth_failed", request.url)
     );
