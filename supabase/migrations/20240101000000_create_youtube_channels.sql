@@ -43,7 +43,8 @@ begin
   new.updated_at = now();
   return new;
 end;
-$$ language plpgsql;
+$$ language plpgsql
+  set search_path = public;
 
 drop trigger if exists update_youtube_channels_updated_at on youtube_channels;
 create trigger update_youtube_channels_updated_at
