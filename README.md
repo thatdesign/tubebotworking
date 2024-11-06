@@ -1,45 +1,70 @@
-# YouTube Channel Connection Setup
+# YouTube Channel Connection Troubleshooting
 
-## Prerequisites
-- Google Cloud Console account
-- Supabase project
+## Database Migration Issues
 
-## OAuth Configuration Steps
+### Resolving Missing Columns
 
-1. **Google Cloud Console Setup**:
-   - Go to [Google Cloud Console](https://console.cloud.google.com/)
-   - Create a new project or select an existing project
-   - Enable the YouTube Data API v3
-   - Navigate to "Credentials"
-   - Create an OAuth 2.0 Client ID
-     - Application Type: Web application
-     - Authorized redirect URIs: `http://localhost:3000/auth/youtube/callback` (replace with your actual app URL)
+If you encounter column-related errors during migration:
 
-2. **Environment Variables**:
-   Create a `.env.local` file in the project root with the following variables:
-   ```
-   NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_google_client_id
-   GOOGLE_CLIENT_SECRET=your_google_client_secret
-   NEXT_PUBLIC_APP_URL=http://localhost:3000
-   NEXT_PUBLIC_YOUTUBE_SCOPES=https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/youtube.force-ssl
+1. **Apply Migration Manually**
+   ```bash
+   supabase migration up
    ```
 
-3. **Supabase Setup**:
-   - Ensure Supabase migrations are up to date
-   - Verify the `youtube_channels` table is created
+2. **Verify Table Schema**
+   Run in Supabase SQL Editor:
+   ```sql
+   SELECT column_name, data_type, is_nullable 
+   FROM information_schema.columns 
+   WHERE table_name = 'youtube_channels'
+   ORDER BY ordinal_position;
+   ```
 
-## Troubleshooting
+### Common Migration Problems
 
-### Common Connection Issues
-- Verify all environment variables are set correctly
-- Check Google Cloud Console OAuth settings
-- Ensure redirect URI matches exactly
-- Verify Supabase project and authentication are working
+- Missing columns
+- Incorrect column types
+- Constraint violations
 
-### Debugging
-- Check browser console for error messages
-- Review server-side logs
-- Validate OAuth token exchange in network tab
+### Troubleshooting Steps
+
+1. **Check Migration File**
+   - Verify all required columns are present
+   - Ensure correct data types
+   - Add `IF NOT EXISTS` clauses
+
+2. **Manual Column Addition**
+   ```sql
+   -- Example of adding a missing column
+   ALTER TABLE youtube_channels 
+   ADD COLUMN IF NOT EXISTS subscriber_count TEXT;
+   ```
+
+3. **Verify Column Constraints**
+   ```sql
+   -- Check column nullability and constraints
+   SELECT 
+     column_name, 
+     is_nullable, 
+     data_type 
+   FROM information_schema.columns 
+   WHERE table_name = 'youtube_channels';
+   ```
+
+### Recommended Actions
+
+- Review migration files
+- Verify Supabase project configuration
+- Check environment variables
+- Restart development server
 
 ## Support
-If you encounter persistent issues, please check the project documentation or file an issue in the GitHub repository.
+
+If migration issues persist:
+1. Provide full error message
+2. Share table schema output
+3. Verify migration history
+
+### Contact Support
+- Check project documentation
+- File a GitHub issue with detailed information

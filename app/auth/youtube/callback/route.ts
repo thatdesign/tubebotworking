@@ -25,6 +25,19 @@ export async function GET(request: Request) {
   try {
     const supabase = createRouteHandlerClient({ cookies });
     
+    // Verify Supabase table schema
+    const { data: tableSchema, error: schemaError } = await supabase
+      .rpc('get_table_schema', { table_name: 'youtube_channels' });
+    
+    if (schemaError) {
+      console.error("Schema check error:", schemaError);
+      return NextResponse.redirect(
+        new URL("/dashboard/channels?error=schema_check_failed", request.url)
+      );
+    }
+
+    console.log("Table Schema:", JSON.stringify(tableSchema, null, 2));
+    
     // Exchange the code for tokens
     const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
@@ -95,9 +108,9 @@ export async function GET(request: Request) {
       channel_title: channel.snippet.title,
       access_token: access_token,
       refresh_token: refresh_token,
-      subscriber_count: channel.statistics.subscriberCount.toString(), // Ensure string type
-      video_count: parseInt(channel.statistics.videoCount, 10), // Ensure integer
-      channel_data: JSON.stringify(channel), // Ensure valid JSON
+      subscriber_count: channel.statistics.subscriberCount.toString(),
+      video_count: parseInt(channel.statistics.videoCount, 10),
+      channel_data: channel,
     };
 
     console.log("Attempting to insert channel data:", JSON.stringify(channelInsertData, null, 2));
