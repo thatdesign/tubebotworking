@@ -15,17 +15,6 @@ interface YouTubeComment {
   }
 }
 
-interface YouTubeVideo {
-  id: {
-    kind: string;
-    videoId: string;
-  };
-  snippet: {
-    title: string;
-    publishedAt: string;
-  }
-}
-
 export async function fetchAndStoreComments() {
   const supabase = createClient();
   
@@ -56,8 +45,6 @@ export async function fetchAndStoreComments() {
 
   for (const channel of channels) {
     try {
-      console.log(`Processing channel ${channel.channel_id}`);
-      
       // First fetch recent videos from the channel
       const videosResponse = await fetch(
         `https://youtube.googleapis.com/youtube/v3/search?part=snippet&channelId=${channel.channel_id}&maxResults=50&order=date&type=video&key=${process.env.NEXT_PUBLIC_YOUTUBE_API_KEY}`,
@@ -70,20 +57,14 @@ export async function fetchAndStoreComments() {
       );
 
       if (!videosResponse.ok) {
-        console.warn(`Error fetching videos: ${videosResponse.statusText}`);
-        const errorData = await videosResponse.json();
-        console.warn('Video API Error:', errorData);
-        continue;
+        throw new Error(`YouTube API error: ${videosResponse.statusText}`);
       }
 
       const videosData = await videosResponse.json();
       const videos: YouTubeVideo[] = videosData.items;
-      console.log(`Found ${videos.length} videos for channel ${channel.channel_id}`);
       
       // For each video, fetch its comments
       for (const video of videos) {
-        console.log(`Fetching comments for video ${video.id.videoId}`);
-        
         const commentsResponse = await fetch(
           `https://youtube.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId=${video.id.videoId}&maxResults=100&key=${process.env.NEXT_PUBLIC_YOUTUBE_API_KEY}`,
           {
@@ -95,20 +76,18 @@ export async function fetchAndStoreComments() {
         );
 
         if (!commentsResponse.ok) {
-          console.warn(`Error fetching comments for video ${video.id.videoId}: ${commentsResponse.statusText}`);
-          const errorData = await commentsResponse.json();
-          console.warn('Comments API Error:', errorData);
+          console.error(`Error fetching comments for video ${video.id.videoId}: ${commentsResponse.statusText}`);
           continue;
         }
 
         const commentsData = await commentsResponse.json();
         const comments: YouTubeComment[] = commentsData.items || [];
-        console.log(`Found ${comments.length} comments for video ${video.id.videoId}`);
 
         // Store comments in Supabase
         for (const comment of comments) {
-          try {
-            const commentData = {
+          const { error } = await supabase
+            .from('youtube_comments')
+            .upsert({
               channel_id: channel.channel_id,
               video_id: video.id.videoId,
               comment_id: comment.id,
@@ -118,33 +97,17 @@ export async function fetchAndStoreComments() {
               video_title: video.snippet.title,
               published_at: comment.snippet.topLevelComment.snippet.publishedAt,
               updated_at: new Date().toISOString(),
-            };
-            
-            console.log('Storing comment:', commentData);
-            
-            const { error: upsertError } = await supabase
-              .from('youtube_comments')
-              .upsert(commentData, {
-                onConflict: 'comment_id'
-              });
+            }, {
+              onConflict: 'comment_id'
+            });
 
-            if (upsertError) {
-              console.warn('Error storing comment:', {
-                error: upsertError,
-                comment: commentData,
-                details: upsertError.details,
-                hint: upsertError.hint,
-                code: upsertError.code
-              });
-            }
-          } catch (err) {
-            console.warn('Error processing comment:', err);
+          if (error) {
+            console.error('Error storing comment:', error);
           }
         }
       }
-    } catch (err: unknown) {
-      const error = err as Error;
-      console.warn(`Error processing channel ${channel.channel_id}:`, error.message);
+    } catch (error) {
+      console.error(`Error processing channel ${channel.channel_id}:`, error);
     }
   }
 }
